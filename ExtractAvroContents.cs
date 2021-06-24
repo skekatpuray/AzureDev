@@ -63,6 +63,7 @@ namespace ExtractAvroContentsFunction
                 //Make this configurable
                 string fileName = "raw/input/" + filename;
 
+
                 //Make this configurable
                 string outputFile = "raw/output/" + filename.Substring(0, filename.IndexOf('.')) + ".json";
 
