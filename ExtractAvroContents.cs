@@ -63,31 +63,23 @@ namespace ExtractAvroContentsFunction
                 //Make this configurable
                 string fileName = "raw/input/" + filename;
 
-
                 //Make this configurable
                 string outputFile = "raw/output/" + filename.Substring(0, filename.IndexOf('.')) + ".json";
 
-                CloudStorageAccount storageAccount = CloudStorageAccount.Parse(connectionString);
+                var inputFileRef = BlobConnector.getBlobFileRef(
+                    Environment.GetEnvironmentVariable("DatalakeConnectionString", EnvironmentVariableTarget.Process),
+                    containerName,
+                    fileName);                
 
-                // Connect to the blob storage
-                CloudBlobClient serviceClient = storageAccount.CreateCloudBlobClient();
-                // Connect to the blob container
-                CloudBlobContainer container = serviceClient.GetContainerReference($"{containerName}");
-                // Connect to the blob file
-                CloudBlockBlob blob = container.GetBlockBlobReference($"{fileName }");
-                // Get the blob file as text
-                //string contents = blob.DownloadTextAsync().Result;
+                var inputFileRefStream = new MemoryStream();
 
-                var inputBlob = new MemoryStream();
+                await inputFileRef.DownloadToStreamAsync(inputFileRefStream);
 
-                await blob.DownloadToStreamAsync(inputBlob);
+                inputFileRefStream.Seek(0, SeekOrigin.Begin);
 
-                inputBlob.Seek(0, SeekOrigin.Begin);
+                StringBuilder strBuilder = new StringBuilder();                
 
-                StringBuilder strBuilder = new StringBuilder();
-                
-
-                using (var reader = AvroContainer.CreateGenericReader(inputBlob))
+                using (var reader = AvroContainer.CreateGenericReader(inputFileRefStream))
                 {
                     while (reader.MoveNext())
                     {
@@ -100,9 +92,12 @@ namespace ExtractAvroContentsFunction
                     }
                 }
 
-                CloudBlockBlob blob2 = container.GetBlockBlobReference($"{outputFile}");
+                var outputFileRef = BlobConnector.getBlobFileRef(
+                    Environment.GetEnvironmentVariable("DatalakeConnectionString", EnvironmentVariableTarget.Process),
+                    containerName,
+                    outputFile);
 
-                await blob2.UploadTextAsync(strBuilder.ToString());
+                await outputFileRef.UploadTextAsync(strBuilder.ToString());
 
                 return new OkObjectResult("File created successfully");
             }
