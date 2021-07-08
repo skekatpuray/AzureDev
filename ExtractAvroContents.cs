@@ -45,20 +45,16 @@ namespace ExtractAvroContentsFunction
 
             using (StreamReader strmReader = new StreamReader(req.Body))
             {
-                //avroFileName = await strmReader.ReadToEndAsync();
                 payloadJsonString = await strmReader.ReadToEndAsync();
                 payload = JsonConvert.DeserializeObject<Payload>(payloadJsonString);
-
             }
 
             filename = avroFileName;
             try
             {
-                //Make this configurable
-                string connectionString = Environment.GetEnvironmentVariable("DatalakeConnectionString", EnvironmentVariableTarget.Process);
+                string connectionString = Environment.GetEnvironmentVariable("DATALAKE_CONNECTIONSTRING", EnvironmentVariableTarget.Process);
 
-                //Make this configurable
-                string containerName = "data";
+                string containerName = Environment.GetEnvironmentVariable("CONTAINER_NAME", EnvironmentVariableTarget.Process);
 
                 //Make this configurable
                 string fileName = "raw/input/" + filename;
@@ -66,11 +62,18 @@ namespace ExtractAvroContentsFunction
                 //Make this configurable
                 string outputFile = "raw/output/" + filename.Substring(0, filename.IndexOf('.')) + ".json";
 
+                /*
+                 * Create input file reference
+                 */
                 var inputFileRef = BlobConnector.getBlobFileRef(
                     Environment.GetEnvironmentVariable("DatalakeConnectionString", EnvironmentVariableTarget.Process),
                     containerName,
                     fileName);                
 
+
+                /*
+                 * Stream in file contents 
+                 */
                 var inputFileRefStream = new MemoryStream();
 
                 await inputFileRef.DownloadToStreamAsync(inputFileRefStream);
@@ -79,6 +82,9 @@ namespace ExtractAvroContentsFunction
 
                 StringBuilder strBuilder = new StringBuilder();                
 
+                /*
+                 * Iterate thru avro records, read the intended attribute (Body) and write it to StringBuilder.
+                 */ 
                 using (var reader = AvroContainer.CreateGenericReader(inputFileRefStream))
                 {
                     while (reader.MoveNext())
@@ -92,17 +98,23 @@ namespace ExtractAvroContentsFunction
                     }
                 }
 
+                /*
+                 * Create output file reference
+                 */
                 var outputFileRef = BlobConnector.getBlobFileRef(
                     Environment.GetEnvironmentVariable("DatalakeConnectionString", EnvironmentVariableTarget.Process),
                     containerName,
                     outputFile);
 
+                /*
+                 * Sink the output
+                 */ 
                 await outputFileRef.UploadTextAsync(strBuilder.ToString());
 
                 return new OkObjectResult("File created successfully");
             }
             catch(Exception exp)
-            {
+            {                
                 return new BadRequestObjectResult("Error:  " + exp.Message + " " + exp.StackTrace);
             }            
         }

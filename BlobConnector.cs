@@ -24,11 +24,11 @@ namespace ExtractAvroContentsFunction
                 CloudBlobClient serviceClient = storageAccount.CreateCloudBlobClient();
 
                 // Connect to the blob container
-                container = serviceClient.GetContainerReference($"{containerName}");
+                container = serviceClient.GetContainerReference(containerName);
             }
                 
             // Connect to the blob file
-            CloudBlockBlob blob = container.GetBlockBlobReference($"{fileName }");
+            CloudBlockBlob blob = container.GetBlockBlobReference(fileName);
 
             return blob;
         }
